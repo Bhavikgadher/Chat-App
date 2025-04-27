@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'chat.dart';
+
 final _firebase = FirebaseAuth.instance;
 
 class AuthScreen extends StatefulWidget {
@@ -18,28 +20,32 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.primary,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Center(
         child: SingleChildScrollView(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                margin: EdgeInsets.only(
-                  top: 30,
-                  bottom: 20,
-                  left: 20,
-                  right: 20,
-                ),
+                margin: const EdgeInsets.all(20),
                 width: 200,
-                child: Icon(Icons.chat_rounded),
+                child: Image.asset(
+                  'assets/images/splash_logo.png',
+                  height: 200,
+                  width: 350,
+                  color: theme.colorScheme.primary, // optional: logo tint
+                ),
               ),
               Card(
-                margin: EdgeInsets.all(20),
+                color: isDark ? Color(0xFF40444B) : Colors.white,
+                margin: const EdgeInsets.all(20),
                 child: SingleChildScrollView(
                   child: Padding(
-                    padding: EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(16),
                     child: Form(
                       key: _form,
                       child: Column(
@@ -48,6 +54,19 @@ class _AuthScreenState extends State<AuthScreen> {
                           TextFormField(
                             decoration: InputDecoration(
                               labelText: 'Email Address',
+                              labelStyle: TextStyle(
+                                color: theme.colorScheme.primary,
+                              ),
+                              enabledBorder: UnderlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                              focusedBorder: UnderlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
                             ),
                             keyboardType: TextInputType.emailAddress,
                             autocorrect: false,
@@ -64,8 +83,24 @@ class _AuthScreenState extends State<AuthScreen> {
                               _enteredEmail = newValue!;
                             },
                           ),
+                          const SizedBox(height: 12),
                           TextFormField(
-                            decoration: InputDecoration(labelText: 'Password'),
+                            decoration: InputDecoration(
+                              labelText: 'Password',
+                              labelStyle: TextStyle(
+                                color: theme.colorScheme.primary,
+                              ),
+                              enabledBorder: UnderlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                              focusedBorder: UnderlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                            ),
                             obscureText: true,
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {
@@ -75,29 +110,23 @@ class _AuthScreenState extends State<AuthScreen> {
                                   value.trim().length > 16) {
                                 return 'Password must be between 8 and 16 characters';
                               }
-                              // String pattern =
-                              //     r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#\$&*~]).{8,16}$';
-                              // RegExp regex = RegExp(pattern);
-                              // if (!regex.hasMatch(value)) {
-                              //   return 'Password must contain upper, lower, digit, and special character';
-                              // }
                               return null;
                             },
                             onSaved: (newValue) {
                               _enteredPassword = newValue!;
                             },
                           ),
-
-                          SizedBox(height: 12),
+                          const SizedBox(height: 20),
                           ElevatedButton(
-                            onPressed: _submit,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor:
-                                  Theme.of(
-                                    context,
-                                  ).colorScheme.primaryContainer,
+                              backgroundColor: theme.colorScheme.primary,
+                              minimumSize: const Size(double.infinity, 50),
                             ),
-                            child: Text(_isLogin ? 'Login' : 'Signup'),
+                            onPressed: _submit,
+                            child: Text(
+                              _isLogin ? 'Login' : 'Signup',
+                              style: TextStyle(color: Colors.white),
+                            ),
                           ),
                           TextButton(
                             onPressed: () {
@@ -109,6 +138,9 @@ class _AuthScreenState extends State<AuthScreen> {
                               _isLogin
                                   ? 'Create an account'
                                   : 'I already have an account.',
+                              style: TextStyle(
+                                color: theme.colorScheme.primary, //
+                              ),
                             ),
                           ),
                         ],
@@ -131,22 +163,28 @@ class _AuthScreenState extends State<AuthScreen> {
       return;
     }
     _form.currentState!.save();
-    if (_isLogin) {
-      //log code
-    } else {
-      try {
-        final userCredentials = await _firebase.createUserWithEmailAndPassword(
+    try {
+      if (_isLogin) {
+        await _firebase.signInWithEmailAndPassword(
           email: _enteredEmail,
           password: _enteredPassword,
         );
-        print(userCredentials);
-      } on FirebaseAuthException catch (error) {
-        if (error.code == 'email-already-in-use') {}
-        ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message ?? 'Authentication failed.')),
+      } else {
+        await _firebase.createUserWithEmailAndPassword(
+          email: _enteredEmail,
+          password: _enteredPassword,
         );
       }
+      if (context.mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => ChatScreen()),
+        );
+      }
+    } on FirebaseAuthException catch (error) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message ?? 'Authentication failed.')),
+      );
     }
   }
 }
